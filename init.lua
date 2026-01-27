@@ -762,7 +762,12 @@ require('lazy').setup({
         --     end, { desc = 'Go to source definition' })
         --   end,
         -- },
-        sourcekit = {},
+        sourcekit = {
+          cmd = { 'sourcekit-lsp' },
+          filetypes = { 'swift', 'objective-c', 'objective-cpp' },
+          root_dir = require('lspconfig.util').root_pattern('Package.swift', '.git'),
+          single_file_support = true,
+        },
         tsgo = {
           cmd = { 'tsgo', '--lsp', '--stdio' },
           filetypes = {
