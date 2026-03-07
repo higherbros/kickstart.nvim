@@ -569,6 +569,17 @@ require('lazy').setup({
           -- or a suggestion from your LSP for this to activate.
           map('gra', vim.lsp.buf.code_action, '[G]oto Code [A]ction', { 'n', 'x' })
 
+          -- Organize imports for the current file (if supported by the LSP)
+          map('<leader>oi', function()
+            vim.lsp.buf.code_action {
+              apply = true,
+              context = {
+                only = { 'source.organizeImports' },
+                diagnostics = {},
+              },
+            }
+          end, '[O]rganize [I]mports')
+
           -- Find references for the word under your cursor.
           map('grr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
 
@@ -597,6 +608,9 @@ require('lazy').setup({
           --  Useful when you're not sure what type a variable is and you want to see
           --  the definition of its *type*, not where it was *defined*.
           map('grt', require('telescope.builtin').lsp_type_definitions, '[G]oto [T]ype Definition')
+
+          -- Show type definition and other information in a floating window.
+          map('K', vim.lsp.buf.hover, 'Hover Documentation')
 
           -- This function resolves a difference between neovim nightly (version 0.11) and stable (version 0.10)
           ---@param client vim.lsp.Client
@@ -799,6 +813,7 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'eslint_d',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
