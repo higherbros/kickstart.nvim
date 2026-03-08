@@ -1004,37 +1004,49 @@ require('lazy').setup({
   --   end,
   -- },
 
+  -- { -- You can easily change to a different colorscheme.
+  --   -- Change the name of the colorscheme plugin below, and then
+  --   -- change the command in the config to whatever the name of that colorscheme is.
+  --   --
+  --   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
+  --   'catppuccin/nvim',
+  --   name = 'catppuccin',
+  --   priority = 1000, -- Make sure to load this before all the other start plugins.
+  --   config = function()
+  --     ---@diagnostic disable-next-line: missing-fields
+  --     require('catppuccin').setup {
+  --       flavour = 'auto', -- latte, frappe, macchiato, mocha
+  --       background = { -- :h background
+  --         light = 'latte',
+  --         dark = 'mocha',
+  --       },
+  --       styles = {
+  --         comments = { 'italic' },
+  --       },
+  --       integrations = {
+  --         cmp = true,
+  --         gitsign = true,
+  --         nvmtree = true,
+  --         notify = true,
+  --         mini = {
+  --           enabled = true,
+  --           indentscope_color = '',
+  --         },
+  --       },
+  --     }
+  --     vim.cmd.colorscheme 'catppuccin'
+  --   end,
+  -- },
+
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'catppuccin/nvim',
-    name = 'catppuccin',
+    'olimorris/onedarkpro.nvim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     config = function()
-      ---@diagnostic disable-next-line: missing-fields
-      require('catppuccin').setup {
-        flavour = 'auto', -- latte, frappe, macchiato, mocha
-        background = { -- :h background
-          light = 'latte',
-          dark = 'mocha',
-        },
-        styles = {
-          comments = { 'italic' },
-        },
-        integrations = {
-          cmp = true,
-          gitsign = true,
-          nvmtree = true,
-          notify = true,
-          mini = {
-            enabled = true,
-            indentscope_color = '',
-          },
-        },
-      }
-      vim.cmd.colorscheme 'catppuccin'
+      vim.cmd.colorscheme 'onedark'
     end,
   },
 
