@@ -18,6 +18,13 @@ return {
       window = {
         mappings = {
           ['\\'] = 'close_window',
+          ['Y'] = function(state)
+            local node = state.tree:get_node()
+            local relative_path = vim.fn.fnamemodify(node.path, ':.')
+
+            vim.fn.setreg('+', relative_path)
+            vim.notify('Copied relative path: ' .. relative_path)
+          end,
         },
       },
     },
