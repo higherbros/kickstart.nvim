@@ -13,5 +13,6 @@ return {
   },
   keys = {
     { '<leader>lg', '<cmd>LazyGit<cr>', desc = 'LazyGit' },
+    { '<leader>hf', '<cmd>LazyGitFilterCurrentFile<cr>', desc = 'git [f]ile history' },
   },
 }
