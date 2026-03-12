@@ -726,6 +726,41 @@ require('lazy').setup({
         -- ts_ls = {},
         --
 
+        graphql = {
+          filetypes = {
+            'graphql',
+            'javascript',
+            'javascriptreact',
+            'typescript',
+            'typescriptreact',
+          },
+          settings = {
+            ['graphql-config'] = {
+              load = {
+                legacy = true,
+              },
+            },
+          },
+          root_markers = {
+            '.graphqlrc',
+            '.graphqlrc.json',
+            '.graphqlrc.yml',
+            '.graphqlrc.yaml',
+            '.graphqlconfig',
+            '.graphqlconfig.json',
+            '.graphqlconfig.yml',
+            '.graphqlconfig.yaml',
+            '.graphqlrc.js',
+            '.graphqlrc.ts',
+            '.graphql.config.js',
+            '.graphql.config.ts',
+            'graphql.config.js',
+            'graphql.config.ts',
+            'package.json',
+            '.git',
+          },
+        },
+
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -1022,9 +1057,31 @@ require('lazy').setup({
           light = 'latte',
           dark = 'mocha',
         },
-        styles = {
-          comments = { 'italic' },
+        styles = { -- Handles the styles of general hi groups (see `:h highlight-args`):
+          comments = { 'italic' }, -- Keep comments soft and readable
+          conditionals = { 'italic' },
+          loops = { 'italic' },
+          functions = { 'bold' },
+          keywords = { 'italic' },
+          --strings = { 'italic' },
+          variables = { 'bold' },
+          numbers = { 'bold' },
+          booleans = { 'bold' },
+          properties = {},
+          types = { 'bold' },
+          operators = {},
+          miscs = { 'italic' },
         },
+        custom_highlights = function(colors)
+          return {
+            Function = { fg = colors.lavender, style = { 'bold' } },
+            ['@function'] = { fg = colors.lavender, style = { 'bold' } },
+            ['@function.method'] = { fg = colors.lavender, style = { 'bold' } },
+            ['@function.call'] = { fg = colors.blue, style = { 'bold' } },
+            ['@function.method.call'] = { fg = colors.blue, style = { 'bold' } },
+            ['@function.builtin'] = { fg = colors.peach, style = { 'bold' } },
+          }
+        end,
         integrations = {
           cmp = true,
           gitsigns = true,
@@ -1098,7 +1155,7 @@ require('lazy').setup({
     -- main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = { 'bash', 'c', 'diff', 'graphql', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
