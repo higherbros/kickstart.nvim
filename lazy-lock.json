@@ -3,6 +3,7 @@
   "SchemaStore.nvim": { "branch": "main", "commit": "073910e2521e23681c44a8b1355e91765a60cbaa" },
   "blink.cmp": { "branch": "main", "commit": "78336bc89ee5365633bcf754d93df01678b5c08f" },
   "catppuccin": { "branch": "main", "commit": "edefef779ab08ce1a4a404713e3012b0d202bd35" },
+  "claudecode.nvim": { "branch": "main", "commit": "af04fbf9c27c5c06b4d1ff022b551aa94e1df4aa" },
   "conform.nvim": { "branch": "master", "commit": "016802de402556da54c36bd7359b441266b01cdd" },
   "fidget.nvim": { "branch": "main", "commit": "9e0201673e08e997e7cf52afca5565c70bd117f3" },
   "gitsigns.nvim": { "branch": "main", "commit": "4bcd99167c265f135886b282baad77afe06206b2" },

@@ -911,7 +911,9 @@ require('lazy').setup({
         -- them unformatted, so a save there would reformat the whole file.
         -- `<leader>f` still formats them anywhere.
         local non_js = { json = true, jsonc = true, yaml = true, markdown = true, css = true, scss = true, graphql = true }
-        if non_js[filetype] and not vim.fs.root(bufnr, { '.lintstagedrc.js', '.lintstagedrc.cjs', '.lintstagedrc.mjs', '.lintstagedrc.json', '.lintstagedrc' }) then
+        if
+          non_js[filetype] and not vim.fs.root(bufnr, { '.lintstagedrc.js', '.lintstagedrc.cjs', '.lintstagedrc.mjs', '.lintstagedrc.json', '.lintstagedrc' })
+        then
           return nil
         else
           return {
@@ -1244,7 +1246,7 @@ require('lazy').setup({
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
