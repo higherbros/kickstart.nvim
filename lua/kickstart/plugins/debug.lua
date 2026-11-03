@@ -2,9 +2,7 @@
 --
 -- Shows how to use the DAP plugin to debug your code.
 --
--- Primarily focused on configuring the debugger for Go, but can
--- be extended to other languages as well. That's why it's called
--- kickstart.nvim and not kitchen-sink.nvim ;)
+-- Configured for Node/TypeScript (kindred-api, Next.js) via js-debug-adapter.
 
 return {
   -- NOTE: Yes, you can install new plugins here!
@@ -20,9 +18,6 @@ return {
     -- Installs the debug adapters for you
     'mason-org/mason.nvim',
     'jay-babu/mason-nvim-dap.nvim',
-
-    -- Add your own debuggers here
-    'leoluz/nvim-dap-go',
   },
   keys = {
     -- Basic debugging keymaps, feel free to change to your liking!
@@ -88,13 +83,19 @@ return {
 
       -- You can provide additional configuration to the handlers,
       -- see mason-nvim-dap README for more information
-      handlers = {},
+      -- The js adapter is configured by hand below, so skip its default setup.
+      handlers = {
+        function(config)
+          require('mason-nvim-dap').default_setup(config)
+        end,
+        js = function() end,
+      },
 
       -- You'll need to check that you have the required things installed
       -- online, please don't ask me how to install them :)
       ensure_installed = {
         -- Update this to ensure that you have the debuggers for the langs you want
-        'delve',
+        'js', -- js-debug-adapter (the VS Code Node/Chrome debugger)
       },
     }
 
@@ -136,13 +137,40 @@ return {
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
     dap.listeners.before.event_exited['dapui_config'] = dapui.close
 
-    -- Install golang specific config
-    require('dap-go').setup {
-      delve = {
-        -- On Windows delve must be run attached or it crashes.
-        -- See https://github.com/leoluz/nvim-dap-go/blob/main/README.md#configuring
-        detached = vim.fn.has 'win32' == 0,
+    -- Node / TypeScript. Start the process with the inspector on, e.g.
+    -- `NODE_OPTIONS=--inspect pnpm dev` (Next.js) or
+    -- `node --inspect dist/bundle.js` (kindred-api), then <F5> and attach.
+    dap.adapters['pwa-node'] = {
+      type = 'server',
+      host = 'localhost',
+      port = '${port}',
+      executable = {
+        command = 'js-debug-adapter',
+        args = { '${port}' },
       },
     }
+    local node_configs = {
+      {
+        type = 'pwa-node',
+        request = 'attach',
+        name = 'Attach to Node process (pick)',
+        processId = require('dap.utils').pick_process,
+        cwd = '${workspaceFolder}',
+        sourceMaps = true,
+        skipFiles = { '<node_internals>/**', '**/node_modules/**' },
+      },
+      {
+        type = 'pwa-node',
+        request = 'attach',
+        name = 'Attach to port 9229',
+        port = 9229,
+        cwd = '${workspaceFolder}',
+        sourceMaps = true,
+        skipFiles = { '<node_internals>/**', '**/node_modules/**' },
+      },
+    }
+    for _, ft in ipairs { 'javascript', 'javascriptreact', 'typescript', 'typescriptreact' } do
+      dap.configurations[ft] = node_configs
+    end
   end,
 }

@@ -173,7 +173,6 @@ vim.o.confirm = true
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 -- Short keymaps for the commands:
-local opts = { buffer = bufnr, noremap = true, silent = true }
 
 -- vim.keymap.set('n', '<leader>oi', function()
 --   vim.cmd 'LspTypescriptSourceAction'
@@ -440,7 +439,14 @@ require('lazy').setup({
         --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
         --   },
         -- },
-        -- pickers = {}
+        pickers = {
+          -- Include dotfolders (.github, .ai, .claude) but not .git itself.
+          -- Gitignored paths (node_modules, .worktrees) stay hidden.
+          find_files = {
+            hidden = true,
+            file_ignore_patterns = { '^%.git/' },
+          },
+        },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -516,6 +522,9 @@ require('lazy').setup({
 
       -- Useful status updates for LSP.
       { 'j-hui/fidget.nvim', opts = {} },
+
+      -- JSON/YAML schemas for jsonls and yamlls.
+      'b0o/SchemaStore.nvim',
 
       -- Allows extra capabilities provided by blink.cmp
       'saghen/blink.cmp',
@@ -685,15 +694,6 @@ require('lazy').setup({
         virtual_text = {
           source = 'if_many',
           spacing = 2,
-          format = function(diagnostic)
-            local diagnostic_message = {
-              [vim.diagnostic.severity.ERROR] = diagnostic.message,
-              [vim.diagnostic.severity.WARN] = diagnostic.message,
-              [vim.diagnostic.severity.INFO] = diagnostic.message,
-              [vim.diagnostic.severity.HINT] = diagnostic.message,
-            }
-            return diagnostic_message[diagnostic.severity]
-          end,
         },
       }
 
@@ -741,24 +741,17 @@ require('lazy').setup({
               },
             },
           },
-          root_markers = {
-            '.graphqlrc',
-            '.graphqlrc.json',
-            '.graphqlrc.yml',
-            '.graphqlrc.yaml',
-            '.graphqlconfig',
-            '.graphqlconfig.json',
-            '.graphqlconfig.yml',
-            '.graphqlconfig.yaml',
-            '.graphqlrc.js',
-            '.graphqlrc.ts',
-            '.graphql.config.js',
-            '.graphql.config.ts',
-            'graphql.config.js',
-            'graphql.config.ts',
-            'package.json',
-            '.git',
-          },
+          -- Start only next to a GraphQL config. lspconfig's default starts the
+          -- server anyway when none is found, and it then throws on every
+          -- request (kindred has none).
+          root_dir = function(bufnr, on_dir)
+            local root = vim.fs.root(bufnr, function(name)
+              return name:match '^%.?graphqlrc' or name:match '^%.?graphql%.config%.' or name:match '^%.graphqlconfig'
+            end)
+            if root then
+              on_dir(root)
+            end
+          end,
         },
 
         lua_ls = {
@@ -813,24 +806,42 @@ require('lazy').setup({
         --     end, { desc = 'Go to source definition' })
         --   end,
         -- },
-        tsgo = {
-          cmd = { 'tsgo', '--lsp', '--stdio' },
-          filetypes = {
-            'javascript',
-            'javascriptreact',
-            'javascript.jsx',
-            'typescript',
-            'typescriptreact',
-            'typescript.tsx',
+        -- TypeScript 7 native server (formerly `tsgo`). lspconfig's defaults
+        -- pick the binary and the monorepo root.
+        tsc = {},
+
+        -- package.json, tsconfig.json, turbo.json, GitHub workflows, etc.
+        jsonls = {
+          settings = {
+            json = {
+              schemas = require('schemastore').json.schemas(),
+              validate = { enable = true },
+            },
           },
-          root_markers = {
-            'tsconfig.json',
-            'jsconfig.json',
-            'package.json',
-            '.git',
-            'tsconfig.base.json',
+        },
+        yamlls = {
+          settings = {
+            yaml = {
+              -- Use SchemaStore.nvim's catalog instead of the server's built-in fetch.
+              schemaStore = { enable = false, url = '' },
+              schemas = require('schemastore').yaml.schemas(),
+            },
           },
-          enabled = true,
+        },
+
+        -- Only next to a Tailwind or PostCSS config (kindred-app's apps/web and
+        -- apps/internal-tools). lspconfig's default falls back to `.git`, so it
+        -- would start in every repo and in Markdown files too.
+        tailwindcss = {
+          filetypes = { 'css', 'scss', 'html', 'javascript', 'javascriptreact', 'typescript', 'typescriptreact' },
+          root_dir = function(bufnr, on_dir)
+            local root = vim.fs.root(bufnr, function(name)
+              return name:match '^tailwind%.config%.' or name:match '^postcss%.config%.'
+            end)
+            if root then
+              on_dir(root)
+            end
+          end,
         },
       }
 
@@ -854,23 +865,18 @@ require('lazy').setup({
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
+      -- Layer the overrides above onto lspconfig's defaults. mason-lspconfig v2
+      -- dropped `handlers`; it enables each installed server, which then picks
+      -- up this config.
+      for server_name, server in pairs(servers) do
+        server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
+        vim.lsp.config(server_name, server)
+      end
+
       require('mason-lspconfig').setup {
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        automatic_installation = false,
-        handlers = {
-          function(server_name)
-            -- Disable the ts_ls since we've installed the tsgo
-            if server_name == 'ts_ls' then
-              return
-            end
-            local server = servers[server_name] or {}
-            -- This handles overriding only values explicitly passed
-            -- by the server configuration above. Useful when disabling
-            -- certain features of an LSP (for example, turning off formatting for ts_ls)
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
-          end,
-        },
+        -- Disable ts_ls since we use tsc (TypeScript 7)
+        automatic_enable = { exclude = { 'ts_ls' } },
       }
     end,
   },
@@ -896,21 +902,37 @@ require('lazy').setup({
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
         local disable_filetypes = { c = true, cpp = true }
-        if disable_filetypes[vim.bo[bufnr].filetype] then
+        local filetype = vim.bo[bufnr].filetype
+        if disable_filetypes[filetype] then
+          return nil
+        end
+        -- Non-JS files are Prettier-formatted only in repos that format them
+        -- on commit (kindred-app's lint-staged). kindred leaves hundreds of
+        -- them unformatted, so a save there would reformat the whole file.
+        -- `<leader>f` still formats them anywhere.
+        local non_js = { json = true, jsonc = true, yaml = true, markdown = true, css = true, scss = true, graphql = true }
+        if non_js[filetype] and not vim.fs.root(bufnr, { '.lintstagedrc.js', '.lintstagedrc.cjs', '.lintstagedrc.mjs', '.lintstagedrc.json', '.lintstagedrc' }) then
           return nil
         else
           return {
-            timeout_ms = 500,
+            timeout_ms = 3000,
             lsp_format = 'fallback',
           }
         end
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        typescript = { 'prettierd', 'prettier', stop_after_first = true },
-        typescriptreact = { 'prettierd', 'prettier', stop_after_first = true },
-        javascript = { 'prettierd', 'prettier', stop_after_first = true },
-        javascriptreact = { 'prettierd', 'prettier', stop_after_first = true },
+        typescript = { 'eslint_d', 'prettier' },
+        typescriptreact = { 'eslint_d', 'prettier' },
+        javascript = { 'eslint_d', 'prettier' },
+        javascriptreact = { 'eslint_d', 'prettier' },
+        json = { 'prettier' },
+        jsonc = { 'prettier' },
+        yaml = { 'prettier' },
+        markdown = { 'prettier' },
+        css = { 'prettier' },
+        scss = { 'prettier' },
+        graphql = { 'prettier' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
@@ -1012,7 +1034,7 @@ require('lazy').setup({
       -- the rust implementation via `'prefer_rust_with_warning'`
       --
       -- See :h blink-cmp-config-fuzzy for more information
-      fuzzy = { implementation = 'lua' },
+      fuzzy = { implementation = 'prefer_rust_with_warning' },
 
       -- Shows a signature help window while you type arguments for a function
       signature = { enabled = true },
@@ -1025,7 +1047,7 @@ require('lazy').setup({
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
     'folke/tokyonight.nvim',
-    priority = 999, -- Make sure to load this before all the other start plugins.
+    lazy = true, -- Loaded on `:colorscheme tokyonight*`; catppuccin is the active scheme.
     config = function()
       ---@diagnostic disable-next-line: missing-fields
       require('tokyonight').setup {
@@ -1083,10 +1105,9 @@ require('lazy').setup({
           }
         end,
         integrations = {
-          cmp = true,
+          blink_cmp = true,
           gitsigns = true,
-          nvimtree = true,
-          notify = true,
+          neotree = true,
           mini = {
             enabled = true,
             indentscope_color = '',
@@ -1103,7 +1124,7 @@ require('lazy').setup({
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
     'olimorris/onedarkpro.nvim',
-    priority = 998, -- Make sure to load this before all the other start plugins.
+    lazy = true, -- Loaded on `:colorscheme onedark*`; catppuccin is the active scheme.
     config = function()
       -- vim.cmd.colorscheme 'onedark'
     end,
@@ -1150,29 +1171,56 @@ require('lazy').setup({
     end,
   },
   { -- Highlight, edit, and navigate code
+    -- The `main` branch only installs parsers and queries: highlighting and
+    -- indent are turned on per buffer below. Building parsers needs the
+    -- `tree-sitter` CLI (`brew install tree-sitter-cli`) and a C compiler.
     'nvim-treesitter/nvim-treesitter',
+    branch = 'main',
+    lazy = false,
     build = ':TSUpdate',
-    -- main = 'nvim-treesitter.configs', -- Sets main module to use for opts
-    -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
-    opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'graphql', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
-      -- Autoinstall languages that are not installed
-      auto_install = true,
-      highlight = {
-        enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
-    },
-    -- There are additional nvim-treesitter modules that you can use to interact
-    -- with nvim-treesitter. You should go explore a few and see what interests you:
-    --
-    --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
-    --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
-    --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+    config = function()
+      local ts = require 'nvim-treesitter'
+      ts.install {
+        'bash',
+        'c',
+        'css',
+        'diff',
+        'dockerfile',
+        'git_config',
+        'gitcommit',
+        'gitignore',
+        'graphql',
+        'html',
+        'javascript',
+        'jsdoc',
+        'json',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'prisma',
+        'query',
+        'regex',
+        'scss',
+        'sql',
+        'toml',
+        'tsx',
+        'typescript',
+        'vim',
+        'vimdoc',
+        'yaml',
+      }
+
+      vim.api.nvim_create_autocmd('FileType', {
+        group = vim.api.nvim_create_augroup('treesitter-start', { clear = true }),
+        callback = function(event)
+          -- Fails quietly when no parser is installed for the filetype.
+          if pcall(vim.treesitter.start, event.buf) then
+            vim.bo[event.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          end
+        end,
+      })
+    end,
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the

@@ -6,7 +6,6 @@ return {
     config = function()
       local lint = require 'lint'
       lint.linters_by_ft = {
-        markdown = { 'markdownlint' },
         javascript = { 'eslint_d' },
         javascriptreact = { 'eslint_d' },
         typescript = { 'eslint_d' },
@@ -54,9 +53,24 @@ return {
           -- Only run the linter in buffers that you can modify in order to
           -- avoid superfluous noise, notably within the handy LSP pop-ups that
           -- describe the hovered symbol using Markdown.
-          if vim.bo.modifiable then
-            lint.try_lint()
+          if not vim.bo.modifiable then
+            return
           end
+          -- Run from the nearest ESLint config: monorepos keep one per
+          -- workspace, ESLint 9 resolves the flat config from the cwd, and
+          -- ESLint 8 reads .eslintignore only from the cwd.
+          local root = vim.fs.root(0, {
+            'eslint.config.mjs',
+            'eslint.config.js',
+            'eslint.config.cjs',
+            'eslint.config.ts',
+            '.eslintrc.json',
+            '.eslintrc.js',
+            '.eslintrc.cjs',
+            '.eslintrc.yml',
+            '.eslintrc',
+          })
+          lint.try_lint(nil, { cwd = root })
         end,
       })
     end,
